@@ -14,7 +14,10 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import io.github.loki666.soundtrackplayer.R
 import io.github.loki666.soundtrackplayer.container
+import io.github.loki666.soundtrackplayer.library.AudioFormats
 import io.github.loki666.soundtrackplayer.library.TrackScanner
+import `in`.dragonbra.javasteam.steam.handlers.steamapps.License
+import java.io.File
 import io.github.loki666.soundtrackplayer.steam.SessionExpiredException
 import `in`.dragonbra.javasteam.depotdownloader.DepotDownloader
 import `in`.dragonbra.javasteam.depotdownloader.IDownloadListener
@@ -26,7 +29,8 @@ import kotlinx.coroutines.future.await
 
 /**
  * Downloads one soundtrack's depots with JavaSteam's DepotDownloader, then scans the files into
- * an ordered track list. Runs as a foreground worker so large FLAC albums survive the app closing.
+ * an ordered track list. When the soundtrack ships several audio formats, only the best one
+ * (FLAC > WAV > … > MP3) is downloaded. Runs as a foreground worker so large FLAC albums survive the app closing.
  */
 class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
@@ -44,45 +48,28 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
 
         val store = container.libraryStore
         val dir = store.albumDir(appId).apply { mkdirs() }
-        val depotProgress = ConcurrentHashMap<Int, Float>()
-        var failure: Throwable? = null
-        var lastReported = 0L
-
         return try {
             val licenses = container.steam.licenses()
-            DepotDownloader(container.steam.client, licenses, maxDownloads = 8).use { downloader ->
-                downloader.addListener(object : IDownloadListener {
-                    override fun onChunkCompleted(depotId: Int, depotPercentComplete: Float, compressedBytes: Long, uncompressedBytes: Long) {
-                        depotProgress[depotId] = depotPercentComplete
-                        val now = System.currentTimeMillis()
-                        if (now - lastReported > 500) {
-                            lastReported = now
-                            val p = depotProgress.values.average().toFloat().coerceIn(0f, 1f)
-                            setProgressAsync(workDataOf(KEY_PROGRESS to p))
-                            notify(p)
-                        }
-                    }
 
-                    override fun onDownloadFailed(item: DownloadItem, error: Throwable) {
-                        failure = error
-                    }
-                })
-                downloader.add(
-                    AppItem(
-                        appId = appId,
-                        installDirectory = dir.absolutePath,
-                        // Soundtrack depots are often tagged for a desktop OS; we want them all.
-                        downloadAllPlatforms = true,
-                        downloadAllLanguages = true,
-                    )
-                )
-                downloader.finishAdding()
-                downloader.getCompletion().await()
-            }
-            failure?.let { throw it }
+            // 1. Manifest-only pass: learn which files the soundtrack ships, without downloading them.
+            runDownloader(licenses, dir, manifestOnly = true, filter = null, onProgress = null)
+            val format = AudioFormats.best(DepotFiles.readManifestDumps(dir))
+
+            // 2. Download only the best audio format (plus cover art and other extras).
+            runDownloader(
+                licenses, dir,
+                manifestOnly = false,
+                filter = format?.let(AudioFormats::downloadFilter),
+                onProgress = { p ->
+                    setProgressAsync(workDataOf(KEY_PROGRESS to p))
+                    notify(p)
+                },
+            )
 
             val local = TrackScanner.scan(appId, dir)
                 ?: return Result.failure(workDataOf(KEY_ERROR to "No audio files were found in this soundtrack."))
+            // Safety net if the filter couldn't be applied: drop the formats we don't play.
+            TrackScanner.deleteOtherFormats(dir, local.format)
             store.saveLocal(local)
             container.library.onDownloadFinished(appId)
             Result.success()
@@ -95,6 +82,50 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
             if (runAttemptCount < 2) Result.retry()
             else Result.failure(workDataOf(KEY_ERROR to (e.message ?: "Download failed.")))
         }
+    }
+
+    /** Runs one DepotDownloader pass over the app's depots and waits for it to finish. */
+    private suspend fun runDownloader(
+        licenses: List<License>,
+        dir: File,
+        manifestOnly: Boolean,
+        filter: List<Regex>?,
+        onProgress: ((Float) -> Unit)?,
+    ) {
+        val depotProgress = ConcurrentHashMap<Int, Float>()
+        var failure: Throwable? = null
+        var lastReported = 0L
+        DepotDownloader(container.steam.client, licenses, maxDownloads = 8).use { downloader ->
+            if (filter != null) DepotFiles.enableFileFilter(downloader, filter)
+            downloader.addListener(object : IDownloadListener {
+                override fun onChunkCompleted(depotId: Int, depotPercentComplete: Float, compressedBytes: Long, uncompressedBytes: Long) {
+                    onProgress ?: return
+                    depotProgress[depotId] = depotPercentComplete
+                    val now = System.currentTimeMillis()
+                    if (now - lastReported > 500) {
+                        lastReported = now
+                        onProgress(depotProgress.values.average().toFloat().coerceIn(0f, 1f))
+                    }
+                }
+
+                override fun onDownloadFailed(item: DownloadItem, error: Throwable) {
+                    failure = error
+                }
+            })
+            downloader.add(
+                AppItem(
+                    appId = appId,
+                    installDirectory = dir.absolutePath,
+                    // Soundtrack depots are often tagged for a desktop OS; we want them all.
+                    downloadAllPlatforms = true,
+                    downloadAllLanguages = true,
+                    downloadManifestOnly = manifestOnly,
+                )
+            )
+            downloader.finishAdding()
+            downloader.getCompletion().await()
+        }
+        failure?.let { throw it }
     }
 
     private fun notify(progress: Float) {

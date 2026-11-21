@@ -242,7 +242,7 @@ private fun Header(item: AlbumWithStatus, tint: Color, onBack: () -> Unit, vm: A
                     }
                     Text(
                         (status as? DownloadStatus.Failed)?.message
-                            ?: listOfNotNull("Download to play", album.sizeBytes?.let(::formatSize)).joinToString(" · "),
+                            ?: listOfNotNull("Download to play", album.sizeBytes?.let { "up to ${formatSize(it)}" }).joinToString(" · "),
                         style = MaterialTheme.typography.bodySmall,
                         color = if (status is DownloadStatus.Failed) MaterialTheme.colorScheme.error else AppColors.TextPrimary.copy(alpha = 0.75f),
                         textAlign = TextAlign.Center,

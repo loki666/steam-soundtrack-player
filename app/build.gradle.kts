@@ -20,7 +20,10 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            // No release keystore yet: sign with the debug key so the release build can be sideloaded.
+            signingConfig = signingConfigs.getByName("debug")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
@@ -30,6 +33,9 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+    testOptions {
+        unitTests.isReturnDefaultValues = true
     }
     packaging {
         resources {
@@ -74,6 +80,9 @@ dependencies {
     implementation(libs.bouncycastle)
     // JavaSteam exposes protobuf types in its public API but only declares it as a runtime dependency.
     implementation(libs.protobuf.java)
+    // Depot chunks are LZMA- or Zstandard-compressed; JavaSteam expects the app to provide both.
+    implementation(libs.xz)
+    implementation(libs.zstd.jni) { artifact { type = "aar" } }
 
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.coroutines.guava)

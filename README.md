@@ -41,7 +41,11 @@ playback/      Media3 MediaSessionService + an app-scoped MediaController wrappe
   before anything is downloaded.
 - Downloads go to the app's external files directory (`Android/data/<package>/files/albums/<appId>`),
   so no storage permission is needed. Signing out keeps downloaded files.
-- When a soundtrack ships both FLAC and MP3, playback uses FLAC.
+- When a soundtrack ships several audio formats (MP3 + WAV, MP3 + FLAC…), only the best one is
+  downloaded (FLAC > WAV > OGG/Opus/M4A/AAC > MP3). A manifest-only pass lists the files first,
+  then JavaSteam's internal per-file filter (enabled via reflection, see `DepotFiles`) fetches just
+  that format plus cover art and booklets. If the filter can't be enabled, everything is
+  downloaded and the other formats are deleted afterwards.
 
 ## Build
 
@@ -49,15 +53,20 @@ Requirements: JDK 17+, Android SDK with platform 37.1.
 
 ```
 ./gradlew assembleDebug        # app/build/outputs/apk/debug/app-debug.apk
+./gradlew assembleRelease      # R8-minified, signed with the debug key for now
 ./gradlew testDebugUnitTest
 ```
+
+Release builds are minified with R8. Everything reached by reflection has a keep rule in
+`app/proguard-rules.pro` (JavaSteam, protobuf, BouncyCastle, zstd-jni, Navigation 3 keys, and the
+DepotDownloader filter fields). `DepotFilesTest` fails if a JavaSteam upgrade renames the latter.
 
 ## Known limitations
 
 - Untested against a live Steam account so far: sign-in, the catalog and downloads need a real
   device and account.
-- DepotDownloader fetches every file in the soundtrack's depots, so an album shipped in both
-  MP3 and FLAC is downloaded twice. JavaSteam's per-file filter isn't exposed yet.
+- The per-file download filter relies on JavaSteam internals until it is exposed publicly.
+- Release builds use the debug signing key until a release keystore is set up.
 - Older soundtracks whose files live in the parent game's depots (rather than their own app) may
   not download.
 - Fonts are the platform defaults rather than the Space Grotesk / Inter pairing in the designs.

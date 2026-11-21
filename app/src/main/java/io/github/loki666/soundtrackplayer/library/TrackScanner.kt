@@ -5,8 +5,6 @@ import java.io.File
 
 /** Turns a downloaded depot folder into an ordered track list. */
 object TrackScanner {
-    /** Preferred first: lossless when Steam ships both. */
-    private val FORMATS = listOf("flac", "wav", "ogg", "opus", "m4a", "aac", "mp3")
     private val COVER_NAMES = listOf("cover", "folder", "front", "album", "artwork")
 
     fun scan(appId: Int, dir: File): LocalAlbum? {
@@ -15,8 +13,8 @@ object TrackScanner {
             .filter { it.isFile }
             .toList()
 
-        val audioByFormat = files.groupBy { it.extension.lowercase() }.filterKeys { it in FORMATS }
-        val format = FORMATS.firstOrNull { audioByFormat.containsKey(it) } ?: return null
+        val audioByFormat = files.groupBy { it.extension.lowercase() }.filterKeys { it in AudioFormats.PREFERENCE }
+        val format = AudioFormats.PREFERENCE.firstOrNull { audioByFormat.containsKey(it) } ?: return null
 
         val tracks = audioByFormat.getValue(format)
             .map { readTrack(it) }
@@ -27,6 +25,14 @@ object TrackScanner {
             ?: images.maxByOrNull { it.length() }
 
         return LocalAlbum(appId = appId, format = format.uppercase(), coverPath = cover?.absolutePath, tracks = tracks)
+    }
+
+    /** Deletes audio in formats other than the one kept, e.g. the MP3 copy of a WAV album. */
+    fun deleteOtherFormats(dir: File, keptFormat: String) {
+        dir.walkTopDown()
+            .onEnter { !it.name.startsWith(".") }
+            .filter { it.isFile && AudioFormats.isAudio(it.name) && it.extension.lowercase() != keptFormat.lowercase() }
+            .forEach { it.delete() }
     }
 
     private fun readTrack(file: File): LocalTrack {

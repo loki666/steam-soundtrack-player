@@ -16,6 +16,8 @@ serialization = "1.13.0"
 palette = "1.1.0"
 protobuf = "4.31.1"
 junit = "4.13.2"
+xz = "1.12"
+zstd = "1.5.7-28"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -40,6 +42,8 @@ coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version
 javasteam = { module = "in.dragonbra:javasteam", version.ref = "javasteam" }
 javasteam-depotdownloader = { module = "in.dragonbra:javasteam-depotdownloader", version.ref = "javasteam" }
 protobuf-java = { module = "com.google.protobuf:protobuf-java", version.ref = "protobuf" }
+xz = { module = "org.tukaani:xz", version.ref = "xz" }
+zstd-jni = { module = "com.github.luben:zstd-jni", version.ref = "zstd" }
 junit = { module = "junit:junit", version.ref = "junit" }
 bouncycastle = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
