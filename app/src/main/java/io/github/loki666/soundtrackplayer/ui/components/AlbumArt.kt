@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.github.loki666.soundtrackplayer.ui.theme.AppColors
+import io.github.loki666.soundtrackplayer.ui.theme.AppFonts
 
 /**
  * Square album art. Tries each url in order (album cover, then the wide store header, cropped),
@@ -54,6 +55,7 @@ fun AlbumArt(
             Text(
                 name,
                 style = MaterialTheme.typography.titleMedium,
+                fontFamily = AppFonts.Heading,
                 fontWeight = FontWeight.Bold,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,

@@ -47,6 +47,12 @@ playback/      Media3 MediaSessionService + an app-scoped MediaController wrappe
   that format plus cover art and booklets. If the filter can't be enabled, everything is
   downloaded and the other formats are deleted afterwards.
 
+### Fonts
+
+Space Grotesk (titles, cover text) and Inter (everything else), as in the designs. Static TTFs
+from Google Fonts live in `app/src/main/res/font`; both are under the SIL Open Font License, whose
+texts ship in `app/src/main/assets/licenses`.
+
 ## Build
 
 Requirements: JDK 17+, Android SDK with platform 37.1.
@@ -69,4 +75,3 @@ DepotDownloader filter fields). `DepotFilesTest` fails if a JavaSteam upgrade re
 - Release builds use the debug signing key until a release keystore is set up.
 - Older soundtracks whose files live in the parent game's depots (rather than their own app) may
   not download.
-- Fonts are the platform defaults rather than the Space Grotesk / Inter pairing in the designs.

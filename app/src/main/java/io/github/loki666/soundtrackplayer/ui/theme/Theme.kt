@@ -8,7 +8,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import io.github.loki666.soundtrackplayer.R
 import androidx.compose.ui.unit.sp
 
 object AppColors {
@@ -41,12 +44,39 @@ private val colors = darkColorScheme(
     error = Color(0xFFFF8A80),
 )
 
+/** The design's pairing: Space Grotesk for titles and cover text, Inter for everything else. */
+object AppFonts {
+    val Heading = FontFamily(
+        Font(R.font.space_grotesk_medium, FontWeight.Medium),
+        Font(R.font.space_grotesk_bold, FontWeight.Bold),
+    )
+    val Body = FontFamily(
+        Font(R.font.inter_regular, FontWeight.Normal),
+        Font(R.font.inter_medium, FontWeight.Medium),
+        Font(R.font.inter_semibold, FontWeight.SemiBold),
+        Font(R.font.inter_bold, FontWeight.Bold),
+    )
+}
+
 private val base = Typography()
-private val typography = base.copy(
-    headlineLarge = base.headlineLarge.copy(fontWeight = FontWeight.Bold, fontSize = 32.sp, lineHeight = 36.sp),
-    headlineMedium = base.headlineMedium.copy(fontWeight = FontWeight.Bold, fontSize = 28.sp, lineHeight = 32.sp),
-    headlineSmall = base.headlineSmall.copy(fontWeight = FontWeight.Bold, fontSize = 24.sp, lineHeight = 28.sp),
-    labelSmall = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp),
+private fun TextStyle.body() = copy(fontFamily = AppFonts.Body)
+private fun TextStyle.heading() = copy(fontFamily = AppFonts.Heading)
+private val typography = Typography(
+    displayLarge = base.displayLarge.heading(),
+    displayMedium = base.displayMedium.heading(),
+    displaySmall = base.displaySmall.heading(),
+    headlineLarge = base.headlineLarge.heading().copy(fontWeight = FontWeight.Bold, fontSize = 32.sp, lineHeight = 36.sp),
+    headlineMedium = base.headlineMedium.heading().copy(fontWeight = FontWeight.Bold, fontSize = 28.sp, lineHeight = 32.sp),
+    headlineSmall = base.headlineSmall.heading().copy(fontWeight = FontWeight.Bold, fontSize = 24.sp, lineHeight = 28.sp),
+    titleLarge = base.titleLarge.body(),
+    titleMedium = base.titleMedium.body(),
+    titleSmall = base.titleSmall.body(),
+    bodyLarge = base.bodyLarge.body(),
+    bodyMedium = base.bodyMedium.body(),
+    bodySmall = base.bodySmall.body(),
+    labelLarge = base.labelLarge.body(),
+    labelMedium = base.labelMedium.body(),
+    labelSmall = TextStyle(fontFamily = AppFonts.Body, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp),
 )
 
 @Composable
