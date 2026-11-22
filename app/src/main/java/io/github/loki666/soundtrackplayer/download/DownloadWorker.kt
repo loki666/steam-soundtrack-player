@@ -26,6 +26,8 @@ import `in`.dragonbra.javasteam.depotdownloader.data.DownloadItem
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.future.await
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * Downloads one soundtrack's depots with JavaSteam's DepotDownloader, then scans the files into
@@ -44,8 +46,30 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
 
     override suspend fun doWork(): Result {
         if (appId == 0) return Result.failure()
-        setForeground(foregroundInfo(null))
+        startForeground()
 
+        // One album at a time: each DepotDownloader can hold 100+ MB of chunk buffers, so two at
+        // once ran out of heap. Later albums wait here and show as queued.
+        if (downloadLock.isLocked) setProgress(workDataOf(KEY_WAITING to true))
+        return downloadLock.withLock {
+            setProgress(workDataOf(KEY_PROGRESS to 0f))
+            download()
+        }
+    }
+
+    /**
+     * Android 12+ refuses a foreground service when the job is restarted in the background (e.g.
+     * after the process died). Keep going as regular background work rather than failing.
+     */
+    private suspend fun startForeground() {
+        try {
+            setForeground(foregroundInfo(null))
+        } catch (e: IllegalStateException) {
+            Log.w(TAG, "Couldn't start the download as a foreground service; continuing in the background", e)
+        }
+    }
+
+    private suspend fun download(): Result {
         val store = container.libraryStore
         val dir = store.albumDir(appId).apply { mkdirs() }
         return try {
@@ -163,9 +187,14 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
     companion object {
         const val KEY_APP_ID = "appId"
         const val KEY_PROGRESS = "progress"
+        /** Progress flag: the worker is waiting for another album's download to finish. */
+        const val KEY_WAITING = "waiting"
         const val KEY_ERROR = "error"
         private const val CHANNEL = "downloads"
         private const val NOTIFICATION_BASE = 10_000
         private const val TAG = "DownloadWorker"
+
+        /** Process-wide: WorkManager runs workers concurrently, so queueing happens here. */
+        private val downloadLock = Mutex()
     }
 }

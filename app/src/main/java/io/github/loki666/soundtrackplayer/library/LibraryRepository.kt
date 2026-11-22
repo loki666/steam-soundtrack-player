@@ -77,7 +77,9 @@ class LibraryRepository(
         val info = work[appId] ?: return DownloadStatus.NotDownloaded
         return when (info.state) {
             WorkInfo.State.ENQUEUED, WorkInfo.State.BLOCKED -> DownloadStatus.Queued
-            WorkInfo.State.RUNNING -> DownloadStatus.Downloading(info.progress.getFloat(DownloadWorker.KEY_PROGRESS, 0f))
+            WorkInfo.State.RUNNING ->
+                if (info.progress.getBoolean(DownloadWorker.KEY_WAITING, false)) DownloadStatus.Queued
+                else DownloadStatus.Downloading(info.progress.getFloat(DownloadWorker.KEY_PROGRESS, 0f))
             WorkInfo.State.FAILED -> DownloadStatus.Failed(
                 info.outputData.getString(DownloadWorker.KEY_ERROR) ?: "Download failed."
             )
