@@ -44,8 +44,15 @@ class TokenStore @Inject constructor(@ApplicationContext context: Context) {
         prefs.edit().putString("$KEY_GUARD.${accountName.lowercase()}", encrypt(data)).apply()
     }
 
+    /** The account's Steam avatar (a public image URL), kept so it shows before Steam is reached. */
+    fun avatarUrl(): String? = prefs.getString(KEY_AVATAR, null)
+
+    fun saveAvatarUrl(url: String) {
+        prefs.edit().putString(KEY_AVATAR, url).apply()
+    }
+
     fun clearLogin() {
-        prefs.edit().remove(KEY_ACCOUNT).remove(KEY_TOKEN).apply()
+        prefs.edit().remove(KEY_ACCOUNT).remove(KEY_TOKEN).remove(KEY_AVATAR).apply()
     }
 
     private fun key(): SecretKey {
@@ -84,5 +91,6 @@ class TokenStore @Inject constructor(@ApplicationContext context: Context) {
         const val KEY_ACCOUNT = "account"
         const val KEY_TOKEN = "refresh_token"
         const val KEY_GUARD = "guard"
+        const val KEY_AVATAR = "avatar_url"
     }
 }

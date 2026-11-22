@@ -55,6 +55,7 @@ class LibraryViewModel @Inject constructor(
 
     val nowPlaying: StateFlow<NowPlaying?> = player.state
     val auth: StateFlow<AuthState> = steam.auth
+    val avatarUrl: StateFlow<String?> = steam.avatarUrl
     val quality: StateFlow<DownloadQuality> = preferences.quality
     val askEveryTime: StateFlow<Boolean> = preferences.askEveryTime
 

@@ -19,6 +19,8 @@ import `in`.dragonbra.javasteam.steam.handlers.steamapps.SteamApps
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.callback.LicenseListCallback
 import `in`.dragonbra.javasteam.steam.handlers.steamuser.LogOnDetails
 import `in`.dragonbra.javasteam.steam.handlers.steamuser.SteamUser
+import `in`.dragonbra.javasteam.steam.handlers.steamfriends.SteamFriends
+import `in`.dragonbra.javasteam.steam.handlers.steamfriends.callback.PersonaStateCallback
 import `in`.dragonbra.javasteam.steam.handlers.steamuser.callback.LoggedOffCallback
 import `in`.dragonbra.javasteam.steam.handlers.steamuser.callback.LoggedOnCallback
 import `in`.dragonbra.javasteam.steam.steamclient.SteamClient
@@ -63,6 +65,7 @@ class SteamSession @Inject constructor(
     val client = SteamClient()
     private val callbacks = CallbackManager(client)
     private val user = requireNotNull(client.getHandler<SteamUser>())
+    private val friends = requireNotNull(client.getHandler<SteamFriends>())
     val apps: SteamApps = requireNotNull(client.getHandler<SteamApps>())
     private val authentication = SteamAuthentication(client)
 
@@ -70,6 +73,10 @@ class SteamSession @Inject constructor(
         tokens.load()?.let { AuthState.SignedIn(it.accountName) } ?: AuthState.SignedOut()
     )
     val auth: StateFlow<AuthState> = _auth.asStateFlow()
+
+    private val _avatarUrl = MutableStateFlow(tokens.avatarUrl())
+    /** The signed-in account's Steam avatar, or null when it has none (or isn't known yet). */
+    val avatarUrl: StateFlow<String?> = _avatarUrl.asStateFlow()
 
     private val licenses = MutableStateFlow<List<License>?>(null)
     private val connectLock = Mutex()
@@ -98,6 +105,13 @@ class SteamSession @Inject constructor(
         callbacks.subscribe<LoggedOffCallback> {
             isLoggedOn = false
             if (it.result.isTokenProblem()) expireSession()
+        }
+        callbacks.subscribe<PersonaStateCallback> { persona ->
+            if (persona.friendId != client.steamID) return@subscribe
+            steamAvatarUrl(persona.avatarHash)?.let { url ->
+                tokens.saveAvatarUrl(url)
+                _avatarUrl.value = url
+            }
         }
         callbacks.subscribe<LicenseListCallback> {
             if (it.result == EResult.OK) licenses.value = it.licenseList
@@ -247,7 +261,11 @@ class SteamSession @Inject constructor(
         withContext(Dispatchers.IO) { user.logOn(details) }
         val callback = withTimeout(CONNECT_TIMEOUT_MS) { pending.await() }
         when {
-            callback.result == EResult.OK -> isLoggedOn = true
+            callback.result == EResult.OK -> {
+                isLoggedOn = true
+                // Our own persona carries the avatar hash; it arrives as a PersonaStateCallback.
+                client.steamID?.let { me -> runCatching { friends.requestFriendInfo(me) } }
+            }
             callback.result.isTokenProblem() -> {
                 expireSession()
                 throw SessionExpiredException()
@@ -263,11 +281,13 @@ class SteamSession @Inject constructor(
         }
         isLoggedOn = false
         tokens.clearLogin()
+        _avatarUrl.value = null
         _auth.value = AuthState.SignedOut()
     }
 
     private fun expireSession() {
         tokens.clearLogin()
+        _avatarUrl.value = null
         _auth.value = AuthState.SignedOut("Your Steam session has expired. Please sign in again.")
     }
 
@@ -290,4 +310,11 @@ class SteamSession @Inject constructor(
             else -> "Sign-in failed${this?.let { " ($it)" } ?: ""}."
         }
     }
+}
+
+/** Steam's CDN URL for a persona avatar hash; null for no avatar (an all-zero hash). */
+internal fun steamAvatarUrl(hash: ByteArray?): String? {
+    if (hash == null || hash.isEmpty() || hash.all { it.toInt() == 0 }) return null
+    val hex = hash.joinToString("") { "%02x".format(it) }
+    return "https://avatars.steamstatic.com/${hex}_full.jpg"
 }

@@ -45,6 +45,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.loki666.soundtrackplayer.library.DownloadQuality
 import io.github.loki666.soundtrackplayer.ui.components.formatSize
+import io.github.loki666.soundtrackplayer.ui.components.AccountAvatar
+import androidx.compose.ui.unit.sp
 import io.github.loki666.soundtrackplayer.ui.theme.AppColors
 
 /** Downloaded size and free space, shown in the account sheet. */
@@ -62,6 +64,7 @@ private val QUALITY_CHOICES = listOf(
 @Composable
 internal fun AccountSheet(
     account: String?,
+    avatarUrl: String?,
     quality: DownloadQuality,
     askEveryTime: Boolean,
     storage: StorageInfo?,
@@ -81,9 +84,7 @@ internal fun AccountSheet(
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                Box(Modifier.size(48.dp).background(AppColors.SurfaceRaised, CircleShape), contentAlignment = Alignment.Center) {
-                    Text(account?.firstOrNull()?.uppercase() ?: "?", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                }
+                AccountAvatar(avatarUrl = avatarUrl, account = account, size = 48.dp, letterSize = 17.sp)
                 Column(Modifier.weight(1f)) {
                     Text(
                         account ?: "Steam account",

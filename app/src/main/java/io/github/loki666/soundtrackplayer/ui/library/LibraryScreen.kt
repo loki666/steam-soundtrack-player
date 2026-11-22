@@ -60,6 +60,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import io.github.loki666.soundtrackplayer.library.AlbumWithStatus
 import io.github.loki666.soundtrackplayer.library.DownloadStatus
+import io.github.loki666.soundtrackplayer.ui.components.AccountAvatar
 import io.github.loki666.soundtrackplayer.steam.AuthState
 import io.github.loki666.soundtrackplayer.ui.components.AlbumArt
 import io.github.loki666.soundtrackplayer.ui.components.MiniPlayer
@@ -72,11 +73,13 @@ fun LibraryScreen(onOpenAlbum: (Int) -> Unit, onOpenPlayer: () -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
     val nowPlaying by vm.nowPlaying.collectAsStateWithLifecycle()
     val account = (vm.auth.collectAsStateWithLifecycle().value as? AuthState.SignedIn)?.accountName
+    val avatarUrl by vm.avatarUrl.collectAsStateWithLifecycle()
     var showAccount by remember { mutableStateOf(false) }
     if (showAccount) {
         LaunchedEffect(Unit) { vm.loadStorage() }
         AccountSheet(
             account = account,
+            avatarUrl = avatarUrl,
             quality = vm.quality.collectAsStateWithLifecycle().value,
             askEveryTime = vm.askEveryTime.collectAsStateWithLifecycle().value,
             storage = vm.storage.collectAsStateWithLifecycle().value,
@@ -101,7 +104,7 @@ fun LibraryScreen(onOpenAlbum: (Int) -> Unit, onOpenPlayer: () -> Unit) {
                 modifier = Modifier.fillMaxSize(),
             ) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
-                    Header(state, account, onOpenAccount = { showAccount = true })
+                    Header(state, account, avatarUrl, onOpenAccount = { showAccount = true })
                 }
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     SearchAndFilters(state, vm::setQuery, vm::setFilter)
@@ -152,7 +155,7 @@ fun LibraryScreen(onOpenAlbum: (Int) -> Unit, onOpenPlayer: () -> Unit) {
 }
 
 @Composable
-private fun Header(state: LibraryUiState, account: String?, onOpenAccount: () -> Unit) {
+private fun Header(state: LibraryUiState, account: String?, avatarUrl: String?, onOpenAccount: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(top = 24.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text("Library", style = MaterialTheme.typography.headlineMedium)
@@ -170,9 +173,7 @@ private fun Header(state: LibraryUiState, account: String?, onOpenAccount: () ->
             color = AppColors.SurfaceRaised,
             modifier = Modifier.size(44.dp).semantics { contentDescription = "Account and settings" },
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                Text(account?.firstOrNull()?.uppercase() ?: "?", fontWeight = FontWeight.SemiBold)
-            }
+            AccountAvatar(avatarUrl = avatarUrl, account = account, size = 44.dp)
         }
     }
 }
