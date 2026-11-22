@@ -34,6 +34,7 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.SliderState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -120,14 +121,32 @@ fun NowPlayingScreen(onClose: () -> Unit, onOpenAlbum: (Int) -> Unit) {
         // Seek bar: follow the player unless the user is dragging.
         var dragging by remember { mutableStateOf<Float?>(null) }
         val duration = state.durationMs.coerceAtLeast(1L)
+        val sliderColors = SliderDefaults.colors(
+            thumbColor = Color.White,
+            activeTrackColor = AppColors.Accent,
+            inactiveTrackColor = Color.White.copy(alpha = 0.22f),
+        )
+        // Only the SliderState overload takes a custom track (needed to drop the end-of-track dot).
+        val sliderState = remember { SliderState() }
+        val playerFraction = (state.positionMs.toFloat() / duration).coerceIn(0f, 1f)
+        LaunchedEffect(playerFraction, dragging) {
+            if (dragging == null) sliderState.value = playerFraction
+        }
         Slider(
-            value = dragging ?: (state.positionMs.toFloat() / duration).coerceIn(0f, 1f),
-            onValueChange = { dragging = it },
+            state = sliderState,
+            onValueChange = {
+                sliderState.value = it
+                dragging = it
+            },
             onValueChangeFinished = {
                 dragging?.let { player.seekTo((it * duration).toLong()) }
                 dragging = null
             },
-            colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = AppColors.Accent, inactiveTrackColor = Color.White.copy(alpha = 0.22f)),
+            colors = sliderColors,
+            track = {
+                // No Material 3 end-of-track dot: the design's seek bar is a plain track.
+                SliderDefaults.Track(sliderState = it, colors = sliderColors, drawStopIndicator = null)
+            },
             modifier = Modifier.padding(top = 16.dp),
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

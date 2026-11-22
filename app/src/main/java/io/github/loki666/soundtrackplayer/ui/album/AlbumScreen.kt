@@ -261,7 +261,12 @@ private fun Header(item: AlbumWithStatus, tint: Color, onBack: () -> Unit, vm: A
                         if (progress == null) {
                             LinearProgressIndicator(Modifier.fillMaxWidth().height(6.dp))
                         } else {
-                            LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().height(6.dp))
+                            LinearProgressIndicator(
+                                progress = { progress },
+                                modifier = Modifier.fillMaxWidth().height(6.dp),
+                                drawStopIndicator = {},
+                                gapSize = 0.dp,
+                            )
                         }
                     }
                     OutlinedIconButton(onClick = vm::cancelDownload, modifier = Modifier.size(48.dp)) {
