@@ -1,9 +1,11 @@
 package io.github.loki666.soundtrackplayer.ui.theme
 
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -49,5 +51,9 @@ private val typography = base.copy(
 
 @Composable
 fun SoundtrackTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = colors, typography = typography, content = content)
+    MaterialTheme(colorScheme = colors, typography = typography) {
+        // Screens draw their own backgrounds instead of sitting in a Surface, so nothing else sets the
+        // content color: without this, uncolored Text falls back to black. Designs use TextPrimary.
+        CompositionLocalProvider(LocalContentColor provides colors.onBackground, content = content)
+    }
 }
