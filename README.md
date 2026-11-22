@@ -1,4 +1,4 @@
-# Steam Soundtrack Player
+# Steam Soundtracks
 
 An Android player for the soundtracks you own on Steam. Sign in with your Steam account, browse
 your soundtracks, download an album to the phone, and play it with background and lock-screen
