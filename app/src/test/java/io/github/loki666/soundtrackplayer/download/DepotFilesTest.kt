@@ -1,6 +1,7 @@
 package io.github.loki666.soundtrackplayer.download
 
 import io.github.loki666.soundtrackplayer.library.AudioFormats
+import io.github.loki666.soundtrackplayer.library.ManifestFile
 import `in`.dragonbra.javasteam.depotdownloader.DepotDownloader
 import `in`.dragonbra.javasteam.steam.steamclient.SteamClient
 import org.junit.Assert.assertEquals
@@ -28,7 +29,11 @@ class DepotFilesTest {
         """.trimIndent().lines()
 
         assertEquals(
-            listOf("WAV/01 - Tidewake.wav", "MP3/01 - Tidewake.mp3", "WAV"),
+            listOf(
+                ManifestFile("WAV/01 - Tidewake.wav", 52_428_800),
+                ManifestFile("MP3/01 - Tidewake.mp3", 5_242_880),
+                ManifestFile("WAV", 0),
+            ),
             DepotFiles.parseManifestDump(dump),
         )
     }

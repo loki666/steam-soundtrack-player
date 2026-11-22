@@ -4,7 +4,11 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.loki666.soundtrackplayer.library.DownloadQuality
 import io.github.loki666.soundtrackplayer.library.LibraryRepository
+import io.github.loki666.soundtrackplayer.library.LibraryStore
+import io.github.loki666.soundtrackplayer.settings.DownloadPreferences
+import kotlinx.coroutines.flow.asStateFlow
 import io.github.loki666.soundtrackplayer.playback.PlayerConnection
 import io.github.loki666.soundtrackplayer.steam.AuthState
 import io.github.loki666.soundtrackplayer.steam.SteamSession
@@ -40,6 +44,8 @@ class LibraryViewModel @Inject constructor(
     private val library: LibraryRepository,
     private val player: PlayerConnection,
     private val steam: SteamSession,
+    private val preferences: DownloadPreferences,
+    private val store: LibraryStore,
 ) : ViewModel() {
     private val query = MutableStateFlow("")
     private val filter = MutableStateFlow(LibraryFilter.All)
@@ -49,6 +55,19 @@ class LibraryViewModel @Inject constructor(
 
     val nowPlaying: StateFlow<NowPlaying?> = player.state
     val auth: StateFlow<AuthState> = steam.auth
+    val quality: StateFlow<DownloadQuality> = preferences.quality
+    val askEveryTime: StateFlow<Boolean> = preferences.askEveryTime
+
+    private val _storage = MutableStateFlow<StorageInfo?>(null)
+    val storage: StateFlow<StorageInfo?> = _storage.asStateFlow()
+
+    fun setQuality(value: DownloadQuality) = preferences.setQuality(value)
+    fun setAskEveryTime(value: Boolean) = preferences.setAskEveryTime(value)
+
+    /** Measures downloads and free space for the account sheet. */
+    fun loadStorage() {
+        viewModelScope.launch { _storage.value = StorageInfo(store.downloadedBytes(), store.freeBytes()) }
+    }
 
     val state: StateFlow<LibraryUiState> =
         combine(library.library, query, filter, refresh) { albums, q, f, r ->

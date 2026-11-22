@@ -26,8 +26,6 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -45,6 +43,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -72,6 +72,20 @@ fun LibraryScreen(onOpenAlbum: (Int) -> Unit, onOpenPlayer: () -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
     val nowPlaying by vm.nowPlaying.collectAsStateWithLifecycle()
     val account = (vm.auth.collectAsStateWithLifecycle().value as? AuthState.SignedIn)?.accountName
+    var showAccount by remember { mutableStateOf(false) }
+    if (showAccount) {
+        LaunchedEffect(Unit) { vm.loadStorage() }
+        AccountSheet(
+            account = account,
+            quality = vm.quality.collectAsStateWithLifecycle().value,
+            askEveryTime = vm.askEveryTime.collectAsStateWithLifecycle().value,
+            storage = vm.storage.collectAsStateWithLifecycle().value,
+            onQuality = vm::setQuality,
+            onAskEveryTime = vm::setAskEveryTime,
+            onSignOut = { showAccount = false; vm.signOut() },
+            onDismiss = { showAccount = false },
+        )
+    }
 
     Box(Modifier.fillMaxSize().background(AppColors.Background)) {
         PullToRefreshBox(
@@ -87,7 +101,7 @@ fun LibraryScreen(onOpenAlbum: (Int) -> Unit, onOpenPlayer: () -> Unit) {
                 modifier = Modifier.fillMaxSize(),
             ) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
-                    Header(state, account, onSignOut = vm::signOut)
+                    Header(state, account, onOpenAccount = { showAccount = true })
                 }
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     SearchAndFilters(state, vm::setQuery, vm::setFilter)
@@ -138,7 +152,7 @@ fun LibraryScreen(onOpenAlbum: (Int) -> Unit, onOpenPlayer: () -> Unit) {
 }
 
 @Composable
-private fun Header(state: LibraryUiState, account: String?, onSignOut: () -> Unit) {
+private fun Header(state: LibraryUiState, account: String?, onOpenAccount: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(top = 24.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text("Library", style = MaterialTheme.typography.headlineMedium)
@@ -150,21 +164,14 @@ private fun Header(state: LibraryUiState, account: String?, onSignOut: () -> Uni
                 )
             }
         }
-        var menu by remember { mutableStateOf(false) }
-        Box {
-            Surface(
-                onClick = { menu = true },
-                shape = CircleShape,
-                color = AppColors.SurfaceRaised,
-                modifier = Modifier.size(44.dp).semantics { contentDescription = "Account" },
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(account?.firstOrNull()?.uppercase() ?: "?", fontWeight = FontWeight.SemiBold)
-                }
-            }
-            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                account?.let { DropdownMenuItem(text = { Text("Signed in as $it", color = AppColors.TextSecondary) }, onClick = {}, enabled = false) }
-                DropdownMenuItem(text = { Text("Sign out") }, onClick = { menu = false; onSignOut() })
+        Surface(
+            onClick = onOpenAccount,
+            shape = CircleShape,
+            color = AppColors.SurfaceRaised,
+            modifier = Modifier.size(44.dp).semantics { contentDescription = "Account and settings" },
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text(account?.firstOrNull()?.uppercase() ?: "?", fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -228,8 +235,14 @@ private fun AlbumTile(item: AlbumWithStatus, onClick: () -> Unit) {
                     ) {
                         Icon(Icons.Rounded.Download, contentDescription = "Not downloaded", modifier = Modifier.size(16.dp))
                     }
-                    DownloadStatus.Queued, is DownloadStatus.Downloading -> LinearProgressIndicator(
-                        progress = { (status as? DownloadStatus.Downloading)?.progress ?: 0f },
+                    is DownloadStatus.Queued -> Box(
+                        Modifier.align(Alignment.TopEnd).padding(8.dp).size(28.dp).background(AppColors.Background, CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Rounded.Schedule, contentDescription = "Waiting to download", modifier = Modifier.size(16.dp))
+                    }
+                    is DownloadStatus.Downloading -> LinearProgressIndicator(
+                        progress = { status.progress },
                         modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp),
                         trackColor = AppColors.Background.copy(alpha = 0.6f),
                         drawStopIndicator = {},
@@ -261,7 +274,7 @@ private fun AlbumTile(item: AlbumWithStatus, onClick: () -> Unit) {
 private fun subtitle(item: AlbumWithStatus): String = when (val s = item.status) {
     is DownloadStatus.Downloaded -> "${s.local.tracks.size} tracks · ${s.local.format}"
     is DownloadStatus.Downloading -> "Downloading · ${(s.progress * 100).toInt()}%"
-    DownloadStatus.Queued -> "Waiting to download"
+    is DownloadStatus.Queued -> "Waiting to download"
     is DownloadStatus.Failed -> "Download failed"
     DownloadStatus.NotDownloaded -> item.album.tracks.size.takeIf { it > 0 }?.let { "$it tracks" } ?: (item.album.artist ?: "Soundtrack")
 }

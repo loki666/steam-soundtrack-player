@@ -4,6 +4,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import dagger.hilt.android.qualifiers.ApplicationContext
 import android.content.Context
+import android.os.StatFs
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -21,6 +22,14 @@ class LibraryStore @Inject constructor(@ApplicationContext context: Context) {
     val musicDir: File = File(context.getExternalFilesDir(null) ?: context.filesDir, "albums")
 
     fun albumDir(appId: Int) = File(musicDir, appId.toString())
+
+    /** Space left on the volume albums are downloaded to. */
+    fun freeBytes(): Long = runCatching { StatFs(musicDir.apply { mkdirs() }.path).availableBytes }.getOrDefault(0L)
+
+    /** Total size of everything downloaded. */
+    suspend fun downloadedBytes(): Long = withContext(Dispatchers.IO) {
+        musicDir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
+    }
 
     suspend fun loadCatalog(): List<Album> = withContext(Dispatchers.IO) {
         runCatching { json.decodeFromString<List<Album>>(catalogFile.readText()) }.getOrDefault(emptyList())

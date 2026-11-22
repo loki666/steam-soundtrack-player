@@ -7,14 +7,18 @@ import java.io.File
 object TrackScanner {
     private val COVER_NAMES = listOf("cover", "folder", "front", "album", "artwork")
 
-    fun scan(appId: Int, dir: File): LocalAlbum? {
+    /**
+     * [downloadedFormat] is the format just downloaded; it wins over files of another format left
+     * in [dir] (e.g. a cancelled WAV download before an MP3 one).
+     */
+    fun scan(appId: Int, dir: File, downloadedFormat: String? = null): LocalAlbum? {
         val files = dir.walkTopDown()
             .onEnter { !it.name.startsWith(".") }
             .filter { it.isFile }
             .toList()
 
         val audioByFormat = files.groupBy { it.extension.lowercase() }.filterKeys { it in AudioFormats.PREFERENCE }
-        val format = AudioFormats.PREFERENCE.firstOrNull { audioByFormat.containsKey(it) } ?: return null
+        val format = chooseFormat(audioByFormat.keys, downloadedFormat) ?: return null
 
         val tracks = audioByFormat.getValue(format)
             .map { readTrack(it) }
@@ -26,6 +30,11 @@ object TrackScanner {
 
         return LocalAlbum(appId = appId, format = format.uppercase(), coverPath = cover?.absolutePath, tracks = tracks)
     }
+
+    /** The format to keep among those on disk: the one just downloaded if present, else the best. */
+    fun chooseFormat(available: Set<String>, downloaded: String?): String? =
+        downloaded?.lowercase()?.takeIf { it in available }
+            ?: AudioFormats.PREFERENCE.firstOrNull { it in available }
 
     /** Deletes audio in formats other than the one kept, e.g. the MP3 copy of a WAV album. */
     fun deleteOtherFormats(dir: File, keptFormat: String) {

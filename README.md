@@ -42,11 +42,14 @@ playback/      Media3 MediaSessionService + an app-scoped MediaController wrappe
   before anything is downloaded.
 - Downloads go to the app's external files directory (`Android/data/<package>/files/albums/<appId>`),
   so no storage permission is needed. Signing out keeps downloaded files.
-- When a soundtrack ships several audio formats (MP3 + WAV, MP3 + FLAC…), only the best one is
-  downloaded (FLAC > WAV > OGG/Opus/M4A/AAC > MP3). A manifest-only pass lists the files first,
-  then JavaSteam's internal per-file filter (enabled via reflection, see `DepotFiles`) fetches just
-  that format plus cover art and booklets. If the filter can't be enabled, everything is
-  downloaded and the other formats are deleted afterwards.
+- When a soundtrack ships several audio formats (MP3 + WAV, MP3 + FLAC…), only one is downloaded.
+  Opening an album runs a manifest-only pass (`FormatProbe`) that lists every file with its size,
+  so the album page shows each format's download size. The user picks one in a sheet, or the
+  default from Account › Downloads applies: "Best quality" (FLAC > WAV > OGG/Opus/M4A/AAC > MP3)
+  or "Smaller files" (the smallest). JavaSteam's internal per-file filter (enabled via
+  reflection, see `DepotFiles`) then fetches just that format plus cover art and booklets. If the
+  filter can't be enabled, everything is downloaded and the other formats are deleted afterwards.
+- Albums download one at a time; the others show as waiting.
 
 ### Fonts
 

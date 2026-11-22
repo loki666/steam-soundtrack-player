@@ -63,6 +63,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import io.github.loki666.soundtrackplayer.library.AlbumWithStatus
 import io.github.loki666.soundtrackplayer.library.DownloadStatus
+import io.github.loki666.soundtrackplayer.library.FormatOption
 import io.github.loki666.soundtrackplayer.ui.components.AlbumArt
 import io.github.loki666.soundtrackplayer.ui.components.MiniPlayer
 import io.github.loki666.soundtrackplayer.ui.components.formatDuration
@@ -163,9 +164,19 @@ private fun Header(item: AlbumWithStatus, tint: Color, onBack: () -> Unit, vm: A
     var menu by remember { mutableStateOf(false) }
     var confirmRemove by remember { mutableStateOf(false) }
 
-    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { vm.download() }
-    val startDownload = {
-        if (Build.VERSION.SDK_INT >= 33) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS) else vm.download()
+    val formats by vm.formats.collectAsStateWithLifecycle()
+    val quality by vm.quality.collectAsStateWithLifecycle()
+    val askEveryTime by vm.askEveryTime.collectAsStateWithLifecycle()
+    var chooseFormat by remember { mutableStateOf(false) }
+
+    // The notification permission prompt comes first on Android 13+; remember the format meanwhile.
+    var pendingFormat by remember { mutableStateOf<FormatOption?>(null) }
+    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        vm.download(pendingFormat)
+    }
+    val startDownload: (FormatOption?) -> Unit = { option ->
+        pendingFormat = option
+        if (Build.VERSION.SDK_INT >= 33) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS) else vm.download(option)
     }
 
     Column(
@@ -229,43 +240,28 @@ private fun Header(item: AlbumWithStatus, tint: Color, onBack: () -> Unit, vm: A
                         Icon(Icons.Rounded.Shuffle, contentDescription = "Shuffle")
                     }
                 }
-                DownloadStatus.NotDownloaded, is DownloadStatus.Failed -> Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    Button(onClick = startDownload, shape = CircleShape, modifier = Modifier.fillMaxWidth().height(52.dp)) {
-                        Icon(Icons.Rounded.Download, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text(if (status is DownloadStatus.Failed) "Retry download" else "Download album", style = MaterialTheme.typography.titleMedium)
-                    }
-                    Text(
-                        (status as? DownloadStatus.Failed)?.message
-                            ?: listOfNotNull("Download to play", album.sizeBytes?.let { "up to ${formatSize(it)}" }).joinToString(" · "),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (status is DownloadStatus.Failed) MaterialTheme.colorScheme.error else AppColors.TextPrimary.copy(alpha = 0.75f),
-                        textAlign = TextAlign.Center,
-                    )
-                }
-                DownloadStatus.Queued, is DownloadStatus.Downloading -> Row(
+                DownloadStatus.NotDownloaded, is DownloadStatus.Failed -> DownloadSection(
+                    formats = formats,
+                    failure = (status as? DownloadStatus.Failed)?.message,
+                    fallbackSize = album.sizeBytes,
+                    quality = quality,
+                    askEveryTime = askEveryTime,
+                    onDownload = startDownload,
+                    onChooseFormat = { chooseFormat = true },
+                )
+                is DownloadStatus.Queued -> QueuedSection(status, onCancel = vm::cancelDownload)
+                is DownloadStatus.Downloading -> Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        val progress = (status as? DownloadStatus.Downloading)?.progress
-                        Text(
-                            if (progress == null) "Waiting to download…" else "Downloading · ${(progress * 100).toInt()}%",
-                            style = MaterialTheme.typography.bodyMedium,
+                        Text("Downloading · ${(status.progress * 100).toInt()}%", style = MaterialTheme.typography.bodyMedium)
+                        LinearProgressIndicator(
+                            progress = { status.progress },
+                            modifier = Modifier.fillMaxWidth().height(6.dp),
+                            drawStopIndicator = {},
+                            gapSize = 0.dp,
                         )
-                        if (progress == null) {
-                            LinearProgressIndicator(Modifier.fillMaxWidth().height(6.dp))
-                        } else {
-                            LinearProgressIndicator(
-                                progress = { progress },
-                                modifier = Modifier.fillMaxWidth().height(6.dp),
-                                drawStopIndicator = {},
-                                gapSize = 0.dp,
-                            )
-                        }
                     }
                     OutlinedIconButton(onClick = vm::cancelDownload, modifier = Modifier.size(48.dp)) {
                         Icon(Icons.Rounded.Close, contentDescription = "Cancel download")
@@ -273,6 +269,18 @@ private fun Header(item: AlbumWithStatus, tint: Color, onBack: () -> Unit, vm: A
                 }
             }
         }
+    }
+
+    val options = (formats as? AlbumFormats.Ready)?.options
+    if (chooseFormat && options != null && options.size > 1) {
+        FormatSheet(
+            options = options,
+            trackCount = trackCount(item),
+            quality = quality,
+            freeBytes = vm.freeBytes(),
+            onDismiss = { chooseFormat = false },
+            onDownload = { chooseFormat = false; startDownload(it) },
+        )
     }
 
     if (confirmRemove) {

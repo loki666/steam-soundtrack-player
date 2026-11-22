@@ -50,7 +50,8 @@ data class LocalTrack(
 
 sealed interface DownloadStatus {
     data object NotDownloaded : DownloadStatus
-    data object Queued : DownloadStatus
+    /** Waiting its turn. [format] is null when the worker will apply the default quality. */
+    data class Queued(val format: FormatOption? = null, val waitingFor: String? = null) : DownloadStatus
     data class Downloading(val progress: Float) : DownloadStatus
     data class Failed(val message: String) : DownloadStatus
     data class Downloaded(val local: LocalAlbum) : DownloadStatus

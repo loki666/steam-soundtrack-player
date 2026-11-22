@@ -42,7 +42,9 @@ class LibraryRepository @Inject constructor(
     /** Null until the on-disk cache has been read. */
     val library: StateFlow<List<AlbumWithStatus>?> =
         combine(albums, local, downloads.active.onStart { emit(emptyMap()) }) { albums, local, work ->
-            albums?.map { AlbumWithStatus(it, statusOf(it.appId, local, work)) }
+            val downloading = work.entries.firstOrNull { (_, info) -> info.isDownloading() }?.key
+            val downloadingName = albums?.firstOrNull { it.appId == downloading }?.name
+            albums?.map { AlbumWithStatus(it, statusOf(it.appId, local, work, downloadingName)) }
         }.stateIn(scope, SharingStarted.Eagerly, null)
 
     fun album(appId: Int): Flow<AlbumWithStatus?> = library.map { list -> list?.firstOrNull { it.album.appId == appId } }
@@ -56,7 +58,7 @@ class LibraryRepository @Inject constructor(
         albums.value = fresh
     }
 
-    fun download(appId: Int) = downloads.download(appId)
+    fun download(appId: Int, option: FormatOption?) = downloads.download(appId, option)
 
     fun cancelDownload(appId: Int) = downloads.cancel(appId)
 
@@ -76,13 +78,23 @@ class LibraryRepository @Inject constructor(
         albums.value = emptyList()
     }
 
-    private fun statusOf(appId: Int, local: Map<Int, LocalAlbum>, work: Map<Int, WorkInfo>): DownloadStatus {
+    private fun WorkInfo.isWaiting() = progress.getBoolean(DownloadWorker.KEY_WAITING, false)
+
+    private fun WorkInfo.isDownloading() = state == WorkInfo.State.RUNNING && !isWaiting()
+
+    private fun statusOf(
+        appId: Int,
+        local: Map<Int, LocalAlbum>,
+        work: Map<Int, WorkInfo>,
+        downloadingName: String?,
+    ): DownloadStatus {
         local[appId]?.let { return DownloadStatus.Downloaded(it) }
         val info = work[appId] ?: return DownloadStatus.NotDownloaded
         return when (info.state) {
-            WorkInfo.State.ENQUEUED, WorkInfo.State.BLOCKED -> DownloadStatus.Queued
+            WorkInfo.State.ENQUEUED, WorkInfo.State.BLOCKED ->
+                DownloadStatus.Queued(downloads.formatOf(info), downloadingName)
             WorkInfo.State.RUNNING ->
-                if (info.progress.getBoolean(DownloadWorker.KEY_WAITING, false)) DownloadStatus.Queued
+                if (info.isWaiting()) DownloadStatus.Queued(downloads.formatOf(info), downloadingName)
                 else DownloadStatus.Downloading(info.progress.getFloat(DownloadWorker.KEY_PROGRESS, 0f))
             WorkInfo.State.FAILED -> DownloadStatus.Failed(
                 info.outputData.getString(DownloadWorker.KEY_ERROR) ?: "Download failed."
