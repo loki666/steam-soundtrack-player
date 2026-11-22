@@ -26,7 +26,7 @@ class SteamCatalogTest {
                     "albummetadata"
                     {
                         "metadata" { "artist" { "english" "Saltwind Studio" } }
-                        "cdn_assets" { "album_cover" "cover_abc.jpg" }
+                        "cdn_assets" { "album_cover" "c71854f64e95b2aeae5cbecd330fe6ff8e3cd53d" }
                         "tracks"
                         {
                             "2" { "discnumber" "1" "tracknumber" "2" "originalname" "Harbor at Dusk" "m" "4" "s" "5" }
@@ -47,10 +47,31 @@ class SteamCatalogTest {
         assertEquals("Ember Coast Soundtrack", album.name)
         assertEquals("Saltwind Studio", album.artist)
         assertEquals(1000, album.parentAppId)
-        assertEquals("https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1234/cover_abc.jpg", album.coverUrl)
+        assertEquals(
+            "https://shared.akamai.steamstatic.com/community_assets/images/apps/1234/c71854f64e95b2aeae5cbecd330fe6ff8e3cd53d.jpg",
+            album.coverUrl,
+        )
         assertEquals(listOf("Tidewake", "Harbor at Dusk"), album.tracks.map { it.title })
         assertEquals(192 + 245, album.totalSeconds)
         assertEquals(1500L, album.sizeBytes)
+    }
+
+    @Test
+    fun `keeps an album cover name that already has an extension`() {
+        val album = SteamCatalog.parseSoundtrack(
+            7,
+            kv(
+                """
+                "appinfo"
+                {
+                    "common" { "name" "Glass Harbor" "type" "Music" }
+                    "albummetadata" { "cdn_assets" { "album_cover" "abc123.png" } }
+                }
+                """.trimIndent()
+            ),
+        )!!
+
+        assertEquals("https://shared.akamai.steamstatic.com/community_assets/images/apps/7/abc123.png", album.coverUrl)
     }
 
     @Test

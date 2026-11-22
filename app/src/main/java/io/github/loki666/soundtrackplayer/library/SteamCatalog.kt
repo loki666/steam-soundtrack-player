@@ -42,6 +42,13 @@ class SteamCatalog(private val steam: SteamSession) {
     companion object {
         private const val BATCH = 200
         private const val ASSETS = "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps"
+        // Album covers are community assets, not store assets: PICS gives a bare SHA-1 file name.
+        private const val COMMUNITY_ASSETS = "https://shared.akamai.steamstatic.com/community_assets/images/apps"
+
+        private fun coverUrl(appId: Int, name: String): String {
+            val file = if ('.' in name) name else "$name.jpg"
+            return "$COMMUNITY_ASSETS/$appId/$file"
+        }
 
         /** Builds an [Album] from a PICS app info tree, or returns null if the app isn't a soundtrack. */
         fun parseSoundtrack(id: Int, kv: KeyValue): Album? {
@@ -76,7 +83,7 @@ class SteamCatalog(private val steam: SteamSession) {
                 name = common["name"].value ?: "Soundtrack $id",
                 artist = artist,
                 parentAppId = common["parent"].asInteger().takeIf { it > 0 },
-                coverUrl = cover?.let { "$ASSETS/$id/$it" },
+                coverUrl = cover?.let { coverUrl(id, it) },
                 headerUrl = "$ASSETS/$id/header.jpg",
                 tracks = tracks,
                 sizeBytes = size,
