@@ -25,6 +25,7 @@ import java.io.IOException
 import kotlin.concurrent.thread
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,6 +38,7 @@ import kotlinx.coroutines.future.await
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 
 class SessionExpiredException : IOException("Your Steam session has expired. Please sign in again.")
@@ -218,10 +220,12 @@ class SteamSession(
         return withTimeout(30_000) { licenses.filterNotNull().first() }
     }
 
+    // connect() resolves the CM server list over HTTP synchronously, and send() writes to the socket
+    // on the calling thread, so both must stay off the main thread (callers include viewModelScope).
     private suspend fun ensureConnected() = connectLock.withLock {
         if (client.isConnected) return@withLock
         connected = CompletableDeferred()
-        client.connect()
+        withContext(Dispatchers.IO) { client.connect() }
         withTimeout(CONNECT_TIMEOUT_MS) { connected.await() }
     }
 
@@ -229,14 +233,13 @@ class SteamSession(
         if (isLoggedOn && client.isConnected) return@withLock
         ensureConnected()
         val pending = CompletableDeferred<LoggedOnCallback>().also { loggedOn = it }
-        user.logOn(
-            LogOnDetails(
-                username = login.accountName,
-                accessToken = login.refreshToken,
-                shouldRememberPassword = true,
-                machineName = deviceName,
-            )
+        val details = LogOnDetails(
+            username = login.accountName,
+            accessToken = login.refreshToken,
+            shouldRememberPassword = true,
+            machineName = deviceName,
         )
+        withContext(Dispatchers.IO) { user.logOn(details) }
         val callback = withTimeout(CONNECT_TIMEOUT_MS) { pending.await() }
         when {
             callback.result == EResult.OK -> isLoggedOn = true

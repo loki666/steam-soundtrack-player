@@ -1,5 +1,6 @@
 package io.github.loki666.soundtrackplayer.ui.library
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.loki666.soundtrackplayer.AppContainer
@@ -7,6 +8,7 @@ import io.github.loki666.soundtrackplayer.library.AlbumWithStatus
 import io.github.loki666.soundtrackplayer.library.DownloadStatus
 import io.github.loki666.soundtrackplayer.playback.NowPlaying
 import io.github.loki666.soundtrackplayer.steam.SessionExpiredException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -70,7 +72,10 @@ class LibraryViewModel(private val app: AppContainer) : ViewModel() {
                 null
             } catch (e: SessionExpiredException) {
                 null // The auth state flips to signed-out and navigation takes over.
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
+                Log.w(TAG, "Library refresh failed", e)
                 "Couldn't update your library from Steam."
             }
             refresh.value = RefreshState(running = false, error = error, done = true)
@@ -86,5 +91,9 @@ class LibraryViewModel(private val app: AppContainer) : ViewModel() {
             app.library.clearCatalog()
             app.steam.signOut()
         }
+    }
+
+    private companion object {
+        const val TAG = "LibraryViewModel"
     }
 }

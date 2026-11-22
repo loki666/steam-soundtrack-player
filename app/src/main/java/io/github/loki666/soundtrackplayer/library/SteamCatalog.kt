@@ -3,6 +3,8 @@ package io.github.loki666.soundtrackplayer.library
 import io.github.loki666.soundtrackplayer.steam.SteamSession
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.PICSRequest
 import `in`.dragonbra.javasteam.types.KeyValue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Lists the account's soundtracks over the Steam client protocol (PICS):
@@ -10,7 +12,8 @@ import `in`.dragonbra.javasteam.types.KeyValue
  */
 class SteamCatalog(private val steam: SteamSession) {
 
-    suspend fun fetchSoundtracks(): List<Album> {
+    /** Main-safe: JavaSteam writes PICS requests to the socket on the calling thread. */
+    suspend fun fetchSoundtracks(): List<Album> = withContext(Dispatchers.IO) {
         val licenses = steam.licenses()
 
         val packageRequests = licenses.map { PICSRequest(it.packageID, it.accessToken) }
@@ -24,7 +27,7 @@ class SteamCatalog(private val steam: SteamSession) {
             steam.apps.picsGetAccessTokens(batch, emptyList()).await().appTokens.entries
         }.associate { it.key to it.value }
 
-        return appIds.chunked(BATCH)
+        appIds.chunked(BATCH)
             .flatMap { batch ->
                 productInfo(apps = batch.map { PICSRequest(it, tokens[it] ?: 0L) }, packages = emptyList())
                     .flatMap { it.apps.values }
