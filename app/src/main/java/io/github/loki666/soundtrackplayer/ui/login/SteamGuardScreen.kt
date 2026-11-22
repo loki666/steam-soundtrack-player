@@ -57,8 +57,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import io.github.loki666.soundtrackplayer.container
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import io.github.loki666.soundtrackplayer.steam.AuthState
 import io.github.loki666.soundtrackplayer.steam.CodeKind
 import io.github.loki666.soundtrackplayer.ui.theme.AppColors
@@ -68,8 +67,7 @@ private const val STEAM_APP_PACKAGE = "com.valvesoftware.android.steam.community
 @Composable
 fun SteamGuardScreen(onBack: () -> Unit) {
     val context = LocalContext.current
-    val steam = context.container.steam
-    val vm = viewModel { AuthViewModel(steam) }
+    val vm: AuthViewModel = hiltViewModel()
     val state = vm.state.collectAsStateWithLifecycle().value as? AuthState.GuardRequired ?: return
 
     var code by rememberSaveable { mutableStateOf("") }

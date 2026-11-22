@@ -44,6 +44,18 @@
             </intent-filter>
         </service>
 
+        <!-- WorkManager starts on demand with Hilt's worker factory (SoundtrackApp), not at startup. -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
+
         <!-- WorkManager's foreground service, declared with the type our download worker uses. -->
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"

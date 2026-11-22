@@ -40,7 +40,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
@@ -49,15 +48,13 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import io.github.loki666.soundtrackplayer.container
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import io.github.loki666.soundtrackplayer.steam.AuthState
 import io.github.loki666.soundtrackplayer.ui.theme.AppColors
 
 @Composable
 fun SignInScreen() {
-    val steam = LocalContext.current.container.steam
-    val vm = viewModel { AuthViewModel(steam) }
+    val vm: AuthViewModel = hiltViewModel()
     val state by vm.state.collectAsStateWithLifecycle()
 
     var username by rememberSaveable { mutableStateOf("") }

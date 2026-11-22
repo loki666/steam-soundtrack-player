@@ -1,5 +1,8 @@
 package io.github.loki666.soundtrackplayer.library
 
+import javax.inject.Inject
+import javax.inject.Singleton
+import dagger.hilt.android.qualifiers.ApplicationContext
 import android.content.Context
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -12,7 +15,8 @@ import kotlinx.serialization.json.Json
  * - `<music dir>/<appId>/`: one folder per downloaded album, holding the depot files, plus
  *   `album.json` once the download has completed and been scanned.
  */
-class LibraryStore(context: Context) {
+@Singleton
+class LibraryStore @Inject constructor(@ApplicationContext context: Context) {
     private val catalogFile = File(context.filesDir, "catalog.json")
     val musicDir: File = File(context.getExternalFilesDir(null) ?: context.filesDir, "albums")
 

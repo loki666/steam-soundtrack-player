@@ -1,5 +1,8 @@
 package io.github.loki666.soundtrackplayer.download
 
+import javax.inject.Inject
+import javax.inject.Singleton
+import dagger.hilt.android.qualifiers.ApplicationContext
 import android.content.Context
 import androidx.work.Constraints
 import androidx.work.ExistingWorkPolicy
@@ -12,7 +15,8 @@ import androidx.work.workDataOf
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-class DownloadScheduler(context: Context) {
+@Singleton
+class DownloadScheduler @Inject constructor(@ApplicationContext context: Context) {
     private val work = WorkManager.getInstance(context)
 
     fun download(appId: Int) {

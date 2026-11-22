@@ -57,8 +57,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import io.github.loki666.soundtrackplayer.container
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import io.github.loki666.soundtrackplayer.library.AlbumWithStatus
 import io.github.loki666.soundtrackplayer.library.DownloadStatus
 import io.github.loki666.soundtrackplayer.steam.AuthState
@@ -69,11 +68,10 @@ import io.github.loki666.soundtrackplayer.ui.theme.AppColors
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(onOpenAlbum: (Int) -> Unit, onOpenPlayer: () -> Unit) {
-    val app = LocalContext.current.container
-    val vm = viewModel { LibraryViewModel(app) }
+    val vm: LibraryViewModel = hiltViewModel()
     val state by vm.state.collectAsStateWithLifecycle()
     val nowPlaying by vm.nowPlaying.collectAsStateWithLifecycle()
-    val account = (app.steam.auth.collectAsStateWithLifecycle().value as? AuthState.SignedIn)?.accountName
+    val account = (vm.auth.collectAsStateWithLifecycle().value as? AuthState.SignedIn)?.accountName
 
     Box(Modifier.fillMaxSize().background(AppColors.Background)) {
         PullToRefreshBox(

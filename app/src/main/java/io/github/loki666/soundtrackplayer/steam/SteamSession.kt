@@ -1,5 +1,9 @@
 package io.github.loki666.soundtrackplayer.steam
 
+import javax.inject.Inject
+import javax.inject.Singleton
+import dagger.hilt.android.qualifiers.ApplicationContext
+import io.github.loki666.soundtrackplayer.di.ApplicationScope
 import android.content.Context
 import android.os.Build
 import android.util.Log
@@ -50,10 +54,11 @@ class SessionExpiredException : IOException("Your Steam session has expired. Ple
  * resulting refresh token log on to the CM servers and download depots. The refresh token is the
  * only thing persisted; we log on with it lazily whenever something needs the network.
  */
-class SteamSession(
-    context: Context,
+@Singleton
+class SteamSession @Inject constructor(
+    @ApplicationContext context: Context,
     private val tokens: TokenStore,
-    private val scope: CoroutineScope,
+    @ApplicationScope private val scope: CoroutineScope,
 ) {
     val client = SteamClient()
     private val callbacks = CallbackManager(client)

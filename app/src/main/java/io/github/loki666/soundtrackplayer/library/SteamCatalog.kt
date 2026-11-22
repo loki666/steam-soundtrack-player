@@ -1,5 +1,7 @@
 package io.github.loki666.soundtrackplayer.library
 
+import javax.inject.Inject
+import javax.inject.Singleton
 import io.github.loki666.soundtrackplayer.steam.SteamSession
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.PICSRequest
 import `in`.dragonbra.javasteam.types.KeyValue
@@ -10,7 +12,8 @@ import kotlinx.coroutines.withContext
  * Lists the account's soundtracks over the Steam client protocol (PICS):
  * licenses → packages → app ids → app info, keeping apps whose type is "Music".
  */
-class SteamCatalog(private val steam: SteamSession) {
+@Singleton
+class SteamCatalog @Inject constructor(private val steam: SteamSession) {
 
     /** Main-safe: JavaSteam writes PICS requests to the socket on the calling thread. */
     suspend fun fetchSoundtracks(): List<Album> = withContext(Dispatchers.IO) {

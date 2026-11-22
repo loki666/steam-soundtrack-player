@@ -13,7 +13,12 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import io.github.loki666.soundtrackplayer.R
-import io.github.loki666.soundtrackplayer.container
+import androidx.hilt.work.HiltWorker
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedInject
+import io.github.loki666.soundtrackplayer.library.LibraryRepository
+import io.github.loki666.soundtrackplayer.library.LibraryStore
+import io.github.loki666.soundtrackplayer.steam.SteamSession
 import io.github.loki666.soundtrackplayer.library.AudioFormats
 import io.github.loki666.soundtrackplayer.library.TrackScanner
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.License
@@ -34,12 +39,18 @@ import kotlinx.coroutines.sync.withLock
  * an ordered track list. When the soundtrack ships several audio formats, only the best one
  * (FLAC > WAV > … > MP3) is downloaded. Runs as a foreground worker so large FLAC albums survive the app closing.
  */
-class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+@HiltWorker
+class DownloadWorker @AssistedInject constructor(
+    @Assisted context: Context,
+    @Assisted params: WorkerParameters,
+    private val steam: SteamSession,
+    private val library: LibraryRepository,
+    private val libraryStore: LibraryStore,
+) : CoroutineWorker(context, params) {
 
-    private val container = context.container
     private val appId = inputData.getInt(KEY_APP_ID, 0)
     private val albumName by lazy {
-        container.library.albumName(appId) ?: "Soundtrack"
+        library.albumName(appId) ?: "Soundtrack"
     }
 
     override suspend fun getForegroundInfo(): ForegroundInfo = foregroundInfo(null)
@@ -70,10 +81,10 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
     }
 
     private suspend fun download(): Result {
-        val store = container.libraryStore
+        val store = libraryStore
         val dir = store.albumDir(appId).apply { mkdirs() }
         return try {
-            val licenses = container.steam.licenses()
+            val licenses = steam.licenses()
 
             // 1. Manifest-only pass: learn which files the soundtrack ships, without downloading them.
             runDownloader(licenses, dir, manifestOnly = true, filter = null, onProgress = null)
@@ -95,7 +106,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
             // Safety net if the filter couldn't be applied: drop the formats we don't play.
             TrackScanner.deleteOtherFormats(dir, local.format)
             store.saveLocal(local)
-            container.library.onDownloadFinished(appId)
+            library.onDownloadFinished(appId)
             Result.success()
         } catch (e: CancellationException) {
             throw e
@@ -119,7 +130,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         val depotProgress = ConcurrentHashMap<Int, Float>()
         var failure: Throwable? = null
         var lastReported = 0L
-        DepotDownloader(container.steam.client, licenses, maxDownloads = 8).use { downloader ->
+        DepotDownloader(steam.client, licenses, maxDownloads = 8).use { downloader ->
             if (filter != null) DepotFiles.enableFileFilter(downloader, filter)
             downloader.addListener(object : IDownloadListener {
                 override fun onChunkCompleted(depotId: Int, depotPercentComplete: Float, compressedBytes: Long, uncompressedBytes: Long) {

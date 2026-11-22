@@ -1,19 +1,17 @@
 package io.github.loki666.soundtrackplayer
 
 import android.app.Application
+import androidx.hilt.work.HiltWorkerFactory
+import androidx.work.Configuration
+import dagger.hilt.android.HiltAndroidApp
 import java.security.Security
+import javax.inject.Inject
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 
-class SoundtrackApp : Application() {
-    /**
-     * Created on first use, not in onCreate: after a force-stop or reboot WorkManager's startup
-     * initializer restarts unfinished downloads on a background thread before onCreate runs, and
-     * DownloadWorker reads the container in its constructor.
-     */
-    val container: AppContainer by lazy {
-        installBouncyCastle()
-        AppContainer(this)
-    }
+@HiltAndroidApp
+class SoundtrackApp : Application(), Configuration.Provider {
+
+    @Inject lateinit var workerFactory: HiltWorkerFactory
 
     init {
         // JavaSteam decompresses LZMA depot chunks on Dispatchers.IO and gives every thread its own
@@ -24,9 +22,17 @@ class SoundtrackApp : Application() {
     }
 
     override fun onCreate() {
+        // Before super.onCreate(), where Hilt injects this class and may start building singletons.
+        installBouncyCastle()
         super.onCreate()
-        container // Build it now on a normal launch, as before.
     }
+
+    /**
+     * WorkManager is initialized on demand (its startup initializer is removed in the manifest), so
+     * restarted downloads are created by Hilt only after onCreate has injected [workerFactory].
+     */
+    override val workManagerConfiguration: Configuration
+        get() = Configuration.Builder().setWorkerFactory(workerFactory).build()
 
     /**
      * Android ships a stripped-down "BC" provider; JavaSteam needs the full one for

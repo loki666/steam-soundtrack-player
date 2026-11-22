@@ -1,5 +1,8 @@
 package io.github.loki666.soundtrackplayer.library
 
+import javax.inject.Inject
+import javax.inject.Singleton
+import io.github.loki666.soundtrackplayer.di.ApplicationScope
 import androidx.work.WorkInfo
 import io.github.loki666.soundtrackplayer.download.DownloadScheduler
 import io.github.loki666.soundtrackplayer.download.DownloadWorker
@@ -19,11 +22,12 @@ import kotlinx.coroutines.launch
  * Single source of truth for the library screen: the Steam catalog, merged with what's on the
  * phone and with in-flight downloads.
  */
-class LibraryRepository(
+@Singleton
+class LibraryRepository @Inject constructor(
     private val store: LibraryStore,
     private val catalog: SteamCatalog,
     private val downloads: DownloadScheduler,
-    private val scope: CoroutineScope,
+    @ApplicationScope private val scope: CoroutineScope,
 ) {
     private val albums = MutableStateFlow<List<Album>?>(null)
     private val local = MutableStateFlow<Map<Int, LocalAlbum>>(emptyMap())

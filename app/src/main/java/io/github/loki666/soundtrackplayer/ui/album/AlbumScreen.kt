@@ -60,8 +60,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import io.github.loki666.soundtrackplayer.container
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import io.github.loki666.soundtrackplayer.library.AlbumWithStatus
 import io.github.loki666.soundtrackplayer.library.DownloadStatus
 import io.github.loki666.soundtrackplayer.ui.components.AlbumArt
@@ -76,8 +75,7 @@ private data class TrackRow(val title: String, val length: String)
 
 @Composable
 fun AlbumScreen(appId: Int, onBack: () -> Unit, onOpenPlayer: () -> Unit) {
-    val app = LocalContext.current.container
-    val vm = viewModel(key = "album-$appId") { AlbumViewModel(app, appId) }
+    val vm = hiltViewModel<AlbumViewModel, AlbumViewModel.Factory>(key = "album-$appId") { it.create(appId) }
     val item by vm.album.collectAsStateWithLifecycle()
     val nowPlaying by vm.nowPlaying.collectAsStateWithLifecycle()
     val current = item ?: return Box(Modifier.fillMaxSize().background(AppColors.Background))

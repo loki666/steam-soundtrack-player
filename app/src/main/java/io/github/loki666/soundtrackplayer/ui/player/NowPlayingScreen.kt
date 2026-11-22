@@ -45,13 +45,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
-import io.github.loki666.soundtrackplayer.container
 import io.github.loki666.soundtrackplayer.ui.components.AlbumArt
 import io.github.loki666.soundtrackplayer.ui.components.formatDuration
 import io.github.loki666.soundtrackplayer.ui.components.rememberCoverTint
@@ -59,7 +58,7 @@ import io.github.loki666.soundtrackplayer.ui.theme.AppColors
 
 @Composable
 fun NowPlayingScreen(onClose: () -> Unit, onOpenAlbum: (Int) -> Unit) {
-    val player = LocalContext.current.container.player
+    val player = hiltViewModel<NowPlayingViewModel>().player
     val state = player.state.collectAsStateWithLifecycle().value
 
     // Playback ended or was cleared while this screen was open.

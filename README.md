@@ -13,7 +13,8 @@ downloads the album files, and plays them locally.
 Single-activity, full Jetpack Compose, Navigation 3.
 
 ```
-ui/            Compose screens + ViewModels (sign in, Steam Guard, library, album, now playing)
+di/            Hilt: the app-wide CoroutineScope; everything else uses @Inject constructors
+ui/            Compose screens + Hilt ViewModels (sign in, Steam Guard, library, album, now playing)
 nav/           Navigation 3 keys and NavDisplay; the back stack follows the auth state
 steam/         SteamSession: CM connection, credential sign-in, Steam Guard, refresh-token log on
                TokenStore: refresh token encrypted with an Android Keystore AES key

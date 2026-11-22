@@ -1,5 +1,9 @@
 package io.github.loki666.soundtrackplayer.playback
 
+import javax.inject.Inject
+import javax.inject.Singleton
+import dagger.hilt.android.qualifiers.ApplicationContext
+import io.github.loki666.soundtrackplayer.di.ApplicationScope
 import android.content.ComponentName
 import android.content.Context
 import android.net.Uri
@@ -43,7 +47,11 @@ data class NowPlaying(
 )
 
 /** App-wide handle on the playback service, exposed as state for the UI. */
-class PlayerConnection(private val context: Context, private val scope: CoroutineScope) {
+@Singleton
+class PlayerConnection @Inject constructor(
+    @ApplicationContext private val context: Context,
+    @ApplicationScope private val scope: CoroutineScope,
+) {
     private val _state = MutableStateFlow<NowPlaying?>(null)
     val state: StateFlow<NowPlaying?> = _state.asStateFlow()
 

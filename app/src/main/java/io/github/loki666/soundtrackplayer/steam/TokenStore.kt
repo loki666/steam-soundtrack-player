@@ -1,5 +1,8 @@
 package io.github.loki666.soundtrackplayer.steam
 
+import javax.inject.Inject
+import javax.inject.Singleton
+import dagger.hilt.android.qualifiers.ApplicationContext
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
@@ -16,7 +19,8 @@ data class StoredLogin(val accountName: String, val refreshToken: String)
  * Keeps the Steam refresh token (a full client credential) encrypted with an Android Keystore
  * AES key that never leaves the device. The password itself is never stored.
  */
-class TokenStore(context: Context) {
+@Singleton
+class TokenStore @Inject constructor(@ApplicationContext context: Context) {
     private val prefs = context.getSharedPreferences("steam_auth", Context.MODE_PRIVATE)
 
     fun load(): StoredLogin? {
